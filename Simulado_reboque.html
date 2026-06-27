@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Estudos - Reboque de Trens</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --secondary-color: #f8f9fa;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --text-color: #333;
+            --border-color: #dee2e6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: #e9ecef;
+            color: var(--text-color);
+            padding-bottom: 60px;
+            line-height: 1.5;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .sticky-actions {
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 53px;
+            z-index: 999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+            flex: 1;
+            max-width: 200px;
+            text-align: center;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .score-display {
+            font-weight: bold;
+            font-size: 1rem;
+            color: var(--primary-color);
+            padding: 5px 10px;
+            border-radius: 5px;
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            display: none;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 10px;
+        }
+
+        .quiz-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 0.9rem;
+        }
+
+        .question-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        .options-list {
+            list-style: none;
+        }
+
+        .option-item {
+            margin-bottom: 10px;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: var(--secondary-color);
+            transition: background-color 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .option-label:hover {
+            background-color: #e2e6ea;
+        }
+
+        .option-label input {
+            margin-right: 10px;
+            margin-top: 3px;
+        }
+
+        /* Classes de correção */
+        .correct-answer {
+            background-color: #d4edda !important;
+            border-color: #c3e6cb !important;
+            color: #155724;
+        }
+
+        .incorrect-answer {
+            background-color: #f8d7da !important;
+            border-color: #f5c6cb !important;
+            color: #721c24;
+        }
+
+        .rationale-box {
+            margin-top: 12px;
+            padding: 10px;
+            background-color: #cce5ff;
+            border: 1px solid #b8daff;
+            color: #004085;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 15px;
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        Simulador: Reboque de Trens
+    </header>
+
+    <div class="sticky-actions">
+        <button class="btn btn-danger" onclick="corrigirSimulado()">Finalizar / Corrigir</button>
+        <div id="scoreDisplay" class="score-display">Acertos: --/50</div>
+        <button class="btn btn-primary" onclick="reiniciarSimulado()">Reiniciar</button>
+    </div>
+
+    <div class="container">
+        <div class="quiz-info">
+            <strong>Instruções:</strong> Responda às 50 questões abaixo baseadas nos procedimentos operacionais padrão (POP 1MRO 0008 e correlatos) para reboque de trens. Você pode rolar a página livremente e clicar em "Finalizar / Corrigir" a qualquer momento para ver o gabarito.
+        </div>
+
+        <form id="quizForm">
+            <div id="questionsContainer"></div>
+        </form>
+    </div>
+
+    <footer>
+        Desenvolvido com foco em usabilidade mobile-first.
+    </footer>
+
+    <script>
+        const questoes = [
+            {
+                id: 1,
+                pergunta: "Qual documento operacional rege especificamente o procedimento de reboque de trem por outro trem na operação metroferroviária?",
+                opcoes: [
+                    "POP 1MRO 0010",
+                    "POP 1MRO 0008",
+                    "POP 1MRO 0011",
+                    "PSQ 9TRA 001"
+                ],
+                correta: 1,
+                justificativa: "O POP 1MRO 0008 determina as regras, critérios e o passo a passo seguro para a realização de socorro e reboque de trens avariados."
+            },
+            {
+                id: 2,
+                pergunta: "Antes de iniciar a aproximação para acoplamento de reboque, qual deve ser a ação imediata do operador do trem avariado?",
+                opcoes: [
+                    "Garantir o isolamento elétrico e aplicar os freios de estacionamento/emergência conforme orientação do CCO.",
+                    "Acelerar o trem para tentar fazê-lo funcionar no tranco.",
+                    "Abandonar a cabine e aguardar na via.",
+                    "Manter as portas de passageiros totalmente abertas sem supervisão."
+                ],
+                correta: 0,
+                justificativa: "A segurança exige a imobilização e preparação elétrica do trem avariado para evitar movimentações imprevistas durante a abordagem."
+            },
+            {
+                id: 3,
+                pergunta: "Qual é a velocidade máxima padrão recomendada durante a aproximação final (últimos metros) para o acoplamento mecânico entre o trem socorredor e o avariado?",
+                opcoes: [
+                    "Até 15 km/h",
+                    "Até 25 km/h",
+                    "Velocidade reduzida de lavador (geralmente entre 3 e 5 km/h)",
+                    "A velocidade máxima da via"
+                ],
+                correta: 2,
+                justificativa: "O acoplamento mecânico deve ser feito em velocidade baixíssima (impacto controlado) para evitar danos aos engates e à estrutura dos trens."
+            },
+            {
+                id: 4,
+                pergunta: "Quem é a autoridade responsável por autorizar o início da movimentação de um trem socorredor em direção ao trem avariado?",
+                opcoes: [
+                    "O próprio operador do trem socorredor por iniciativa própria.",
+                    "O Controlador do Centro de Controle Operacional (CCO).",
+                    "O Agente de Estação da plataforma mais próxima.",
+                    "A equipe de manutenção de via permanente."
+                ],
+                correta: 1,
+                justificativa: "Toda movimentação em rota de socorro exige controle centralizado e autorização expressa do CCO para garantir a segurança da via."
+            },
+            {
+                id: 5,
+                pergunta: "No contexto do reboque de trens, o termo 'Trem Socorredor' refere-se a:",
+                opcoes: [
+                    "O trem que sofreu a pane e aguarda ajuda.",
+                    "O veículo de manutenção que recolhe lixo da via.",
+                    "O trem operativo que se desloca para acoplar e movimentar o trem avariado.",
+                    "O trem que circula imediatamente atrás na escala comercial."
+                ],
+                correta: 2,
+                justificativa: "O trem socorredor é a composição ativa encarregada de realizar o resgate e movimentação do trem com falha incapacitante."
+            },
+            {
+                id: 6,
+                pergunta: "Após o acoplamento mecânico e pneumático entre os trens, qual teste fundamental deve ser realizado antes de iniciar o deslocamento na via?",
+                opcoes: [
+                    "Teste de ar condicionado.",
+                    "Teste de continuidade do freio e eficácia de frenagem do conjunto.",
+                    "Teste de luminosidade dos faróis.",
+                    "Teste de abertura das portas de serviço da cauda."
+                ],
+                correta: 1,
+                justificativa: "Garantir que a pressão do ar de freio está contínua e que o trem socorredor consegue frear o conjunto acoplado é o item mais crítico de segurança."
+            },
+            {
+                id: 7,
+                pergunta: "Se houver necessidade de reboque com passageiros a bordo devido a uma emergência extrema, qual cuidado deve ser tomado?",
+                opcoes: [
+                    "Realizar a movimentação na velocidade máxima permitida da via.",
+                    "Manter comunicação constante com os usuários via sistema de som e conduzir com velocidade restrita e segurança redobrada.",
+                    "Desligar as luzes internas para economizar bateria.",
+                    "Bloquear as saídas de emergência com lacres permanentes."
+                ],
+                correta: 1,
+                justificativa: "A informação acalma os passageiros, e a velocidade reduzida mitiga os riscos de acidentes com a composição lotada e avariada."
+            },
+            {
+                id: 8,
+                pergunta: "O que deve ser feito com o disjuntor de tração ou comando de tração do trem avariado antes de iniciar o reboque?",
+                opcoes: [
+                    "Deve ser mantido ligado em potência máxima.",
+                    "Deve ser isolado/desativado para evitar que o trem avariado exerça força motriz contrária ou irregular.",
+                    "Deve ser jumpeado com fios externos na cabine de condução.",
+                    "Deve ser verificado apenas após a chegada ao pátio."
+                ],
+                correta: 1,
+                justificativa: "Isolar a tração do trem avariado impede comandos falsos ou conflitos de tração com o trem que está empurrando ou puxando."
+            },
+            {
+                id: 9,
+                pergunta: "Durante o procedimento de aproximação, a sinalização visual e sonora entre os operadores deve ser:",
+                opcoes: [
+                    "Evitada para não gastar a bateria do rádio.",
+                    "Padronizada via rádio comercial/operacional e buzina, mantendo confirmações claras a cada etapa.",
+                    "Feita apenas por gestos manuais fora da cabine.",
+                    "Substituída por mensagens de texto particulares."
+                ],
+                correta: 1,
+                justificativa: "A comunicação clara e padronizada elimina ambiguidades de distância e intenção entre os dois operadores envolvidos."
+            },
+            {
+                id: 10,
+                pergunta: "Em caso de falha total do sistema pneumático de freio do trem avariado (via presa), como deve proceder a liberação mecânica dos freios?",
+                opcoes: [
+                    "O freio não pode ser liberado e o trem deve ser arrastado com as rodas travadas.",
+                    "Deve ser efetuado o isolamento manual ou recuo mecânico dos cilindros de freio (afrouxamento manual) sob estrita segurança.",
+                    "Utilizar óleo lubrificante nos trilhos para deslizar.",
+                    "Bater com marreta nos truques até romper as mangueiras."
+                ],
+                correta: 1,
+                justificativa: "Se o ar não consegue aliviar o freio, o procedimento manual de afrouxamento garante que as rodas girem livremente durante o reboque, evitando calos nas rodas."
+            },
+            {
+                id: 11,
+                pergunta: "Qual o limite máximo de velocidade recomendado ao empurrar um trem avariado em trechos com curvas acentuadas e AMVs?",
+                opcoes: [
+                    "Velocidade reduzida, geralmente não ultrapassando os limites restritos pelo regulamento (ex: 15 km/h ou conforme sinalização de falha).",
+                    "50 km/h estável.",
+                    "Velocidade máxima comercial.",
+                    "A velocidade determinada pelo operador do trem avariado sem consultar o CCO."
+                ],
+                correta: 0,
+                justificativa: "A manobra de empurrar (propulsão) é mais instável que puxar, exigindo velocidade severamente restrita em pontos críticos como AMVs."
+            },
+            {
+                id: 12,
+                pergunta: "Quem deve permanecer na cabine dianteira do trem avariado se ele estiver sendo empurrado pelo trem socorredor?",
+                opcoes: [
+                    "Ninguém, a cabine deve ir vazia.",
+                    "O operador do próprio trem avariado, atuando como sinaleiro de vanguarda e pronto para acionar o freio de emergência se necessário.",
+                    "Um passageiro voluntário.",
+                    "O técnico de manutenção de subestações elétricas."
+                ],
+                correta: 1,
+                justificativa: "O operador na vanguarda tem a visão da via à frente e funciona como os 'olhos' do operador que está empurrando na cauda."
+            },
+            {
+                id: 13,
+                pergunta: "No engate automático schaku, comumente usado em trens metropolitanos, quais conexões ocorrem simultaneamente no acoplamento bem-sucedido?",
+                opcoes: [
+                    "Apenas mecânica.",
+                    "Apenas elétrica.",
+                    "Mecânica, pneumática e, dependendo do modelo/isolamento, elétrica.",
+                    "Nenhuma, exige amarração com cordas."
+                ],
+                correta: 2,
+                justificativa: "O engate schaku foi projetado para integrar a conexão física, as linhas de ar comprimido (principal e freio) e contatos elétricos em uma só operação."
+            },
+            {
+                id: 14,
+                pergunta: "Se a falha mecânica do trem envolver o travamento permanente de um truque ou eixo, qual equipamento auxiliar de via deve ser utilizado para o reboque?",
+                opcoes: [
+                    "Cabo de aço simples.",
+                    "Dispositivo de truque auxiliar de movimentação (tipo 'tartaruga' ou 'skate' de via).",
+                    "Cunhas de madeira sob as rodas.",
+                    "Macaco hidráulico portátil mantido sob o trem em movimento."
+                ],
+                correta: 1,
+                justificativa: "A 'tartaruga' ou 'skate' suspende o eixo travado, permitindo deslizar o trem com segurança até a oficina sem danificar os trilhos e a roda."
+            },
+            {
+                id: 15,
+                pergunta: "Qual das seguintes alternativas descreve uma condição impeditiva para o início do reboque?",
+                opcoes: [
+                    "Luzes do salão de passageiros acesas.",
+                    "Presença de freios presos ou falta de confirmação de alívio nos eixos que vão rodar livremente.",
+                    "Ar condicionado funcionando em modo ventilação.",
+                    "Rádio em perfeito estado de funcionamento."
+                ],
+                correta: 1,
+                justificativa: "Arrastar um trem com freios aplicados gera superaquecimento, risco de descarrilamento e danos severos à via e rodeiros."
+            },
+            {
+                id: 16,
+                pergunta: "O operador do trem socorredor, ao receber a ordem de socorro, deve conduzir seu trem em qual modo de condução ao se aproximar do bloco ocupado pelo trem avariado?",
+                opcoes: [
+                    "Modo automático em velocidade comercial.",
+                    "Modo manual restrito (com supervisão visual total e velocidade de segurança que permita parar antes de qualquer obstáculo).",
+                    "Modo de teste de fábrica.",
+                    "Com o sistema de bordo totalmente desligado sem autorização."
+                ],
+                correta: 1,
+                justificativa: "A aproximação exige condução manual e velocidade restrita porque o sistema de sinalização detectará o trecho à frente como ocupado."
+            },
+            {
+                id: 17,
+                pergunta: "O que significa realizar um 'teste de tração' logo após o acoplamento físico dos engates?",
+                opcoes: [
+                    "Acelerar o trem por 5 minutos sem sair do lugar.",
+                    "Aplicar uma leve força de tração no sentido oposto ao trem acoplado para verificar visual e fisicamente se as garras do engate travaram.",
+                    "Girar as rodas no vazio para testar a aderência.",
+                    "Medir a corrente elétrica das baterias."
+                ],
+                correta: 1,
+                justificativa: "O pequeno tranco inverso (teste de tração) confirma se o acoplamento mecânico está firme e não vai se soltar na via."
+            },
+            {
+                id: 18,
+                pergunta: "Durante o trajeto de reboque, caso a comunicação via rádio falhe permanentemente entre os dois operadores, o procedimento correto dita que:",
+                opcoes: [
+                    "O reboque continue na velocidade máxima para sair logo da via.",
+                    "A composição acoplada deve ser parada imediatamente até restabelecer a comunicação ou método seguro alternativo.",
+                    "Os operadores devem se comunicar por gritos pelas janelas.",
+                    "O operador da cauda deve adivinhar o momento de frear."
+                ],
+                correta: 1,
+                justificativa: "A perda de comunicação quebra a cadeia de segurança da manobra, exigindo parada imediata do conjunto."
+            },
+            {
+                id: 19,
+                pergunta: "Em uma rampa descendente acentuada (declive), qual configuração de reboque é tecnicamente preferível por motivos de segurança e controle de frenagem?",
+                opcoes: [
+                    "Ter o trem socorredor na vanguarda puxando o trem avariado.",
+                    "Ter o trem socorredor empurrando sem freios.",
+                    "Desacoplar os trens e deixá-los descer por gravidade.",
+                    "Não há preferência operacional."
+                ],
+                correta: 0,
+                justificativa: "Puxar o trem avariado na descida garante melhor controle dinâmico e evita o efeito 'sanfona' ou pressões excessivas nos engates."
+            },
+            {
+                id: 20,
+                pergunta: "A mangueira de Pressão Principal (Encanamento Principal - EP) serve para qual finalidade quando conectada entre os trens no reboque?",
+                opcoes: [
+                    "Levar água para os lavatórios.",
+                    "Alimentar e carregar os reservatórios de ar comprimido do trem avariado para manter seus sistemas pneumáticos operacionais.",
+                    "Resfriar os motores elétricos.",
+                    "Conectar o sistema de esgoto do trem."
+                ],
+                correta: 1,
+                justificativa: "O encanamento principal transmite ar comprimido sob alta pressão dos compressores do trem socorredor para restabelecer os reservatórios do trem avariado."
+            },
+            {
+                id: 21,
+                pergunta: "Qual EPI é obrigatório para o operador ao descer à via para inspecionar ou alinhar engates para o reboque?",
+                opcoes: [
+                    "Apenas óculos escuros comuns.",
+                    "Capacete com carneira, óculos de segurança, calçado de proteção com biqueira e colete reflexivo de alta visibilidade.",
+                    "Não é necessário EPI na via operacional.",
+                    "Apenas luvas de procedimento cirúrgico."
+                ],
+                correta: 1,
+                justificativa: "O trânsito na via exige proteção integral contra atropelamentos (colete), quedas de objetos (capacete) e torções/impactos (calçado técnico)."
+            },
+            {
+                id: 22,
+                pergunta: "Antes de acoplar mecanicamente, os operadores devem verificar se as coberturas protetoras (capas) dos engates automáticos foram:",
+                opcoes: [
+                    "Pintadas de vermelho.",
+                    "Removidas e armazenadas adequadamente.",
+                    "Lubrificadas com graxa condutiva pesada.",
+                    "Mantidas presas firmemente com fita isolante."
+                ],
+                correta: 1,
+                justificativa: "As capas protetoras evitam sujeira no engate, mas precisam ser retiradas para permitir o encaixe perfeito das garras e conexões."
+            },
+            {
+                id: 23,
+                pergunta: "Se o engate elétrico entre os trens não puder ser estabelecido ou for propositalmente isolado, como o operador do trem socorredor controlará os freios do trem avariado?",
+                opcoes: [
+                    "Não controlará; o trem avariado irá totalmente sem freio.",
+                    "Através do comando pneumático da tubulação de freio acoplada, que traduz as reduções de pressão em força de frenagem automática.",
+                    "Usando um controle remoto portátil sem fio.",
+                    "Pedindo ao operador do trem avariado para puxar a alavanca manual de emergência a cada segundo."
+                ],
+                correta: 1,
+                justificativa: "O freio pneumático automático funciona por queda de pressão no encanamento de freio, garantindo frenagem mesmo sem nenhuma conexão elétrica entre as composições."
+            },
+            {
+                id: 24,
+                pergunta: "Qual a distância de segurança aproximada em que o trem socorredor deve fazer uma parada completa antes de iniciar a aproximação final e lenta de engate?",
+                opcoes: [
+                    "A pelo menos 15 a 30 metros de distância do trem avariado.",
+                    "A 1 km de distância.",
+                    "Não há parada intermediária; deve-se ir direto para o impacto.",
+                    "A exatamente 10 centímetros."
+                ],
+                correta: 0,
+                justificativa: "A parada de segurança a uma distância razoável serve para confirmar procedimentos via rádio, conferir alinhamento de via e zerar o risco de colisões violentas."
+            },
+            {
+                id: 25,
+                pergunta: "O reboque deve preferencialmente destinar a composição avariada para:",
+                opcoes: [
+                    "A próxima estação para desembarque total (caso ainda haja passageiros) e, em seguida, para a via de estacionamento auxiliar ou pátio de manutenção indicado pelo CCO.",
+                    "Uma via principal de alta circulação comercial permanente.",
+                    "O meio de um túnel escuro.",
+                    "A primeira oficina privada fora da concessão."
+                ],
+                correta: 0,
+                justificativa: "Desocupar a via principal e garantir o desembarque dos usuários em local seguro são as prioridades absolutas da regulação de tráfego."
+            },
+            {
+                id: 26,
+                pergunta: "Se houver vazamento maciço de ar incurável na tubulação de freio do trem avariado, impossibilitando a pressurização, o que ocorre com seus freios pneumáticos automáticos?",
+                opcoes: [
+                    "Eles ficam totalmente aliviados.",
+                    "Eles aplicam e travam por segurança (princípio da falha segura).",
+                    "Eles derretem instantaneamente.",
+                    "Eles mudam sozinhos para o modo elétrico."
+                ],
+                correta: 1,
+                justificativa: "Os freios ferroviários usam o princípio da falha segura: a falta ou esvaziamento total do encanamento de freio gera aplicação máxima de emergência."
+            },
+            {
+                id: 27,
+                pergunta: "Como é denominado o procedimento de retirar a pressão e isolar eletricamente um trem que aguarda socorro?",
+                opcoes: [
+                    "Despreparação ou desativação do trem.",
+                    "Reset comercial rápido.",
+                    "Lavagem técnica de cabine.",
+                    "Alinhamento geométrico de rodeiro."
+                ],
+                correta: 0,
+                justificativa: "A despreparação deixa o trem seguro, sem comandos ativos que possam interferir na condução executada pelo trem socorredor."
+            },
+            {
+                id: 28,
+                pergunta: "Após a finalização do reboque e inserção do trem avariado no pátio, qual a primeira providência de segurança física sobre o trem avariado antes de desacoplar o socorredor?",
+                opcoes: [
+                    "Ligar o rádio de bordo.",
+                    "Imobilizar o trem avariado utilizando calços de via e acionando seus freios manuais/estacionamento para evitar movimentação acidental.",
+                    "Limpar o para-brisa.",
+                    "Abrir as janelas laterais da cabine."
+                ],
+                correta: 1,
+                justificativa: "Antes de desengatar o trem que socorreu, o avariado deve ser fisicamente fixado para não rolar descontroladamente pelo pátio."
+            },
+            {
+                id: 29,
+                pergunta: "Ao efetuar o reboque do trem, o operador do trem socorredor deve monitorar constantemente no painel da cabine (IHM):",
+                opcoes: [
+                    "O relógio de ponto eletrônico.",
+                    "A pressão dos reservatórios de ar e os indicadores de corrente elétrica de tração.",
+                    "Os canais de televisão locais.",
+                    "A temperatura externa das estações fechadas."
+                ],
+                correta: 1,
+                justificativa: "O reboque consome mais energia e ar comprimido; acompanhar a pressão e esforço evita panes consecutivas no próprio trem socorredor."
+            },
+            {
+                id: 30,
+                pergunta: "A manobra de 'propulsão' no reboque ocorre quando o trem socorredor está posicionado na:",
+                opcoes: [
+                    "Frente do trem avariado, puxando-o.",
+                    "Traseira do trem avariado, empurrando-o.",
+                    "Lateral do trem, em via paralela.",
+                    "Parte superior da estrutura."
+                ],
+                correta: 1,
+                justificativa: "Propulsão significa gerar movimento empurrando a carga a partir da extremidade traseira do fluxo de marcha."
+            },
+            {
+                id: 31,
+                pergunta: "A manobra de 'tração' no reboque ocorre quando o trem socorredor está posicionado na:",
+                opcoes: [
+                    "Traseira do trem avariado, empurrando-o.",
+                    "Frente do trem avariado, puxando-o.",
+                    "Via oposta em sentido contrário.",
+                    "Subestação elétrica local."
+                ],
+                correta: 1,
+                justificativa: "Tração, neste contexto específico de arranjo, refere-se ao trem socorredor que lidera o sentido de movimento, puxando o trem avariado por meio do engate."
+            },
+            {
+                id: 32,
+                pergunta: "Se o engate automático apresentar desalinhamento horizontal na via em curva, o que os operadores devem fazer antes de tentar o acoplamento?",
+                opcoes: [
+                    "Acelerar ao máximo para forçar o encaixe na pancada.",
+                    "Alinhar manualmente o engate articulado central (com os trens totalmente parados e protegidos) utilizando os EPIs adequados.",
+                    "Desistir da operação imediatamente e chamar os bombeiros.",
+                    "Amarrar com arame farpado encontrado na faixa de domínio."
+                ],
+                correta: 1,
+                justificativa: "Os engates automáticos possuem flexibilidade lateral e podem requerer centralização manual cuidadosa para casarem perfeitamente nas retas ou curvas leves."
+            },
+            {
+                id: 33,
+                pergunta: "Qual o risco técnico de manter o freio de estacionamento do trem avariado aplicado durante o trajeto de reboque?",
+                opcoes: [
+                    "O trem consome menos energia elétrica.",
+                    "Superaquecimento das sapatas/discos, geração de fumaça, travamento de rodas e possível descarrilamento por arrasto forçado.",
+                    "Aumento desnecessário da velocidade de reboque.",
+                    "Melhoria na aderência dos trilhos."
+                ],
+                correta: 1,
+                justificativa: "O freio de estacionamento atua por mola mecânica e gera imensa resistência friccional se arrastado, destruindo componentes de roda e freio."
+            },
+            {
+                id: 34,
+                pergunta: "O sinal de buzina longa e contínua emitido por um trem ferroviário em manobra de socorro geralmente serve para:",
+                opcoes: [
+                    "Cumprimentar funcionários na plataforma.",
+                    "Alertar equipes na via sobre a movimentação iminente ou indicar situação de emergência/parada forçada.",
+                    "Anunciar o encerramento do expediente regulamentar.",
+                    "Testar a acústica dos túneis metroviários."
+                ],
+                correta: 1,
+                justificativa: "A buzina ferroviária serve estritamente como sinal sonoro de alerta de segurança e código de manobras para pessoal de via."
+            },
+            {
+                id: 35,
+                pergunta: "Durante o procedimento de acoplamento, quem comanda a velocidade e o momento exato do toque físico?",
+                opcoes: [
+                    "O CCO diretamente por controle remoto de via.",
+                    "O operador do trem socorredor, seguindo rigorosamente a visibilidade e as orientações/sinalizações de distância recebidas.",
+                    "O operador do trem avariado, acionando botões em sua cabine desativada.",
+                    "Qualquer funcionário posicionado na passarela de emergência do túnel."
+                ],
+                correta: 1,
+                justificativa: "A condução ativa pertence ao operador do trem socorredor, que detém o controle dos sistemas de tração e frenagem do veículo em movimento."
+            },
+            {
+                id: 36,
+                pergunta: "Que tipo de falha no trem avariado justifica a necessidade de reboque?",
+                opcoes: [
+                    "Queima de uma lâmpada indicadora secundária no salão.",
+                    "Falha total de tração irrecuperável ou perda completa de sistemas críticos que impeçam a condução segura por meios próprios.",
+                    "Ar condicionado da cabine operando em temperatura ligeiramente alta.",
+                    "Falta de bilhetes na bilheteria da estação de origem."
+                ],
+                correta: 1,
+                justificativa: "O socorro por reboque é uma medida drástica que impacta o carrossel de trens, reservada para falhas impeditivas severas da composição."
+            },
+            {
+                id: 37,
+                pergunta: "Caso o trem avariado recupere a tração sozinho no meio do processo de reboque já acoplado, o operador deve:",
+                opcoes: [
+                    "Ligar a tração imediatamente sem avisar e empurrar o trem socorredor.",
+                    "Manter o trem avariado isolado e reportar ao CCO, completando a estratégia de reboque combinada com segurança.",
+                    "Desengatar os trens com a composição ainda em movimento lento.",
+                    "Desligar todos os rádios de comunicação por vergonha."
+                ],
+                correta: 1,
+                justificativa: "Alterar a estratégia aprovada no meio da via sem coordenação com o CCO gera altíssimo risco de acidentes operacionais."
+            },
+            {
+                id: 38,
+                pergunta: "O engate de emergência ou 'barra de reboque' temporária é utilizado quando:",
+                opcoes: [
+                    "Os engates automáticos padrão de ambos os trens são incompatíveis ou estão danificados.",
+                    "Os trens são do mesmo modelo exato.",
+                    "A manobra ocorre em linha reta perfeita e descidas leves apenas.",
+                    "O operador esquece a chave da cabine de comando."
+                ],
+                correta: 0,
+                justificativa: "A barra de conexão intermediária (adaptadora) serve para acoplar frotas com sistemas de engate fisicamente diferentes em situações de socorro mútuo."
+            },
+            {
+                id: 39,
+                pergunta: "A verificação de 'gabarito' durante o reboque visa garantir que:",
+                opcoes: [
+                    "A numeração dos carros combine com o ano corrente.",
+                    "Nenhum componente dos trens acoplados exceda os limites físicos laterais ou verticais da via, evitando colisões com plataformas ou túneis.",
+                    "O peso do operador esteja adequado à balança comercial.",
+                    "As portas abram estritamente para o lado da parede do túnel."
+                ],
+                correta: 1,
+                justificativa: "Garantir o gabarito dinâmico impede que partes desalinhadas ou danificadas raspem ou colidam contra estruturas fixas da via e estações."
+            },
+            {
+                id: 40,
+                pergunta: "Se o trem socorredor patinar excessivamente devido a trilhos úmidos ou folhas na via durante o arrasto, qual recurso técnico deve ser ativado?",
+                opcoes: [
+                    "Despejo manual de água nos trilhos.",
+                    "Sistema de arenamento (aplicação de areia nos trilhos automático ou manual) para aumentar o coeficiente de atrito.",
+                    "Aceleração intermitente no nível máximo de emergência.",
+                    "Pedir para os passageiros empurrarem pelas janelas."
+                ],
+                correta: 1,
+                justificativa: "O arenador lança areia fina quartzosa exatamente na frente das rodas motoras, limpando o trilho e restabelecendo a aderência mecânica."
+            },
+            {
+                id: 41,
+                pergunta: "O conceito ferroviário de 'Falha Segura' (Fail-Safe) aplicado ao reboque dita que qualquer ruptura física do engate pneumático resultará em:",
+                opcoes: [
+                    "Aceleração descontrolada de ambos os veículos.",
+                    "Aplicação imediata e automática dos freios de emergência em ambas as partes fracionadas.",
+                    "Explosão dos tanques de combustível auxiliar.",
+                    "Nenhuma reação nos sistemas de freio."
+                ],
+                correta: 1,
+                justificativa: "Se o conjunto se romper, o ar do encanamento de freio escapa instantaneamente para a atmosfera, provocando a frenagem de emergência automática de ambos os lados separados."
+            },
+            {
+                id: 42,
+                pergunta: "Em caso de reboque em trecho de via em 'Y' ou desvios complexos, qual deve ser a postura dos operadores?",
+                opcoes: [
+                    "Passar correndo para evitar que o CCO mude de ideia.",
+                    "Redobrar a atenção, confirmar o alinhamento visual das agulhas dos AMVs e operar em velocidade extremamente reduzida sob orientação da sinalização.",
+                    "Desligar os faróis para não ofuscar os AMVs.",
+                    "Deixar o trem avariado comandar a rota através de empurrão mecânico simples."
+                ],
+                correta: 1,
+                justificativa: "Zonas de AMV são áreas críticas de mudança de via onde o esforço lateral do reboque exige tráfego lento e cauteloso para mitigar descarrilamentos."
+            },
+            {
+                id: 43,
+                pergunta: "Qual o limite de trens avariados que um único trem socorredor comercial padrão pode rebocar simultaneamente por vez, segundo as margens de segurança operacionais gerais?",
+                opcoes: [
+                    "No máximo 1 composição avariada por manobra padrão.",
+                    "Até 5 trens acoplados em fila indiana.",
+                    "Dez trens comerciais acoplados.",
+                    "Não há limite técnico estabelecido."
+                ],
+                correta: 0,
+                justificativa: "Salvo projetos ou autorizações especiais de engenharia pesada, o socorro padrão é limitado a resgatar uma composição por vez para não sobrecarregar freios e tração do socorredor."
+            },
+            {
+                id: 44,
+                pergunta: "Antes de descer à via férrea para realizar inspeção de engates ou conexões do reboque, o operador deve confirmar com o CCO:",
+                opcoes: [
+                    "A cotação do dólar comercial.",
+                    "O bloqueio elétrico da rede aérea/terceiro trilho (se aplicável ao trecho) e a garantia de que nenhum outro trem circulará naquela zona da via (proteção de via).",
+                    "A quantidade de passageiros na estação terminal.",
+                    "O cardápio do refeitório central."
+                ],
+                correta: 1,
+                justificativa: "A proteção de via garante que o operador não sofrerá choque elétrico de alta tensão nem será atropelado por composições circulantes enquanto trabalha nos trilhos."
+            },
+            {
+                id: 45,
+                pergunta: "A caixa azul com a justificativa técnica que aparece no simulador após a correção assemelha-se a qual prática recomendada de estudo?",
+                opcoes: [
+                    "Apenas decorar números sem nexo.",
+                    "Estudo ativo por revisão e fixação de contexto de regras operacionais.",
+                    "Advinhação por intuição mística.",
+                    "Ignorar os erros cometidos."
+                ],
+                correta: 1,
+                justificativa: "Ler as justificativas solidifica a compreensão técnica do regulamento operacional e ajuda a fixar o conteúdo para a prática real."
+            },
+            {
+                id: 46,
+                pergunta: "O engate mecânico ferroviário padrão é considerado travado quando os indicadores físicos de engate (marcas ou pinos visuais de trava), se existentes, apontam para a posição:",
+                opcoes: [
+                    "Totalmente recolhida ou cor verde/indicador mecânico alinhado conforme manual do fabricante.",
+                    "Posição de manutenção quebrada.",
+                    "Falta total de pinos na carcaça.",
+                    "Cor vermelha viva piscante."
+                ],
+                correta: 0,
+                justificativa: "Muitos engates possuem marcações físicas ou pinos de segurança salientes que comprovam visualmente o travamento mecânico efetivo das garras internas."
+            },
+            {
+                id: 47,
+                pergunta: "Caso ocorra uma emergência médica com um passageiro dentro do trem avariado durante a manobra lenta de reboque, a prioridade passa a ser:",
+                opcoes: [
+                    "Abandonar os trens na via e correr.",
+                    "Informar imediatamente o CCO para providenciar atendimento médico de prontidão na próxima estação de desembarque e prosseguir o reboque com prioridade segura.",
+                    "Ocultar o fato do Centro de Controle Operacional.",
+                    "Parar o reboque no meio do túnel por tempo indeterminado."
+                ],
+                correta: 1,
+                justificativa: "O gerenciamento de crises exige coordenação com o CCO para acolhimento médico imediato na plataforma seguinte, mantendo o reboque focado na evacuação."
+            },
+            {
+                id: 48,
+                pergunta: "Após o término da manobra de reboque, onde o operador deve registrar formalmente as ocorrências, tempos e falhas observadas?",
+                opcoes: [
+                    "Em blocos de notas pessoais descartáveis.",
+                    "No Livro de Bordo da Composição ou Relatório Diário de Operação (RDO).",
+                    "Em redes sociais abertas.",
+                    "Não há necessidade de qualquer registro escrito."
+                ],
+                correta: 1,
+                justificativa: "O registro formal em documentos como o Livro de Bordo assegura a rastreabilidade legal e técnica dos incidentes da operação metroferroviária."
+            },
+            {
+                id: 49,
+                pergunta: "A coordenação de um reboque envolve a sinergia perfeita entre:",
+                opcoes: [
+                    "Apenas fornecedores externos de peças de reposição.",
+                    "Operador do trem avariado, operador do trem socorredor e o Controlador do CCO.",
+                    "Os passageiros comerciais da plataforma oposta apenas.",
+                    "A equipe de marketing e publicidade institucional."
+                ],
+                correta: 1,
+                justificativa: "A manobra de socorro ferroviário é uma operação em equipe tripartida (dois operadores executando e o CCO monitorando/autorizando)."
+            },
+            {
+                id: 50,
+                pergunta: "Qual o principal objetivo de se estudar o reboque de trens através de cenários simulados e questões de revisão?",
+                opcoes: [
+                    "Aumentar o tempo de resposta em caso de crise ferroviária.",
+                    "Garantir a segurança operacional, minimizar falhas humanas e agilizar a desocupação da via comercial com eficiência técnica.",
+                    "Apenas preencher relatórios burocráticos sem aplicação prática.",
+                    "Substituir os engenheiros mecânicos da ferrovia."
+                ],
+                correta: 1,
+                justificativa: "O domínio teórico dos procedimentos operacionais prepara o operador para agir com rapidez, calma e precisão absoluta no momento das falhas reais."
+            }
+        ];
+
+        function renderizarQuestoes() {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = '';
+
+            questoes.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.id = `card-${q.id}`;
+
+                const qText = document.createElement('div');
+                qText.className = 'question-text';
+                qText.innerText = `${index + 1}. ${q.pergunta}`;
+                card.appendChild(qText);
+
+                const optionsList = document.createElement('ul');
+                optionsList.className = 'options-list';
+
+                q.opcoes.forEach((opcao, oIndex) => {
+                    const li = document.createElement('li');
+                    li.className = 'option-item';
+
+                    const label = document.createElement('label');
+                    label.className = 'option-label';
+                    label.id = `label-${q.id}-${oIndex}`;
+
+                    const input = document.createElement('input');
+                    input.type = 'radio';
+                    input.name = `question-${q.id}`;
+                    input.value = oIndex;
+                    input.required = true;
+
+                    label.appendChild(input);
+                    label.appendChild(document.createTextNode(opcao));
+                    li.appendChild(label);
+                    optionsList.appendChild(li);
+                });
+
+                card.appendChild(optionsList);
+
+                const rationale = document.createElement('div');
+                rationale.className = 'rationale-box';
+                rationale.id = `rationale-${q.id}`;
+                rationale.innerText = q.justificativa;
+                card.appendChild(rationale);
+
+                container.appendChild(card);
+            });
+        }
+
+        function corrigirSimulado() {
+            let acertos = 0;
+            const form = document.getElementById('quizForm');
+            
+            questoes.forEach(q => {
+                const selectedOption = form.elements[`question-${q.id}`];
+                let respondidoIndex = -1;
+
+                if (selectedOption) {
+                    if (selectedOption.value !== undefined && selectedOption.checked) {
+                        respondidoIndex = parseInt(selectedOption.value);
+                    } else {
+                        for (let i = 0; i < selectedOption.length; i++) {
+                            if (selectedOption[i].checked) {
+                                respondidoIndex = parseInt(selectedOption[i].value);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Reseta classes antigas de correção
+                q.opcoes.forEach((_, oIndex) => {
+                    const lbl = document.getElementById(`label-${q.id}-${oIndex}`);
+                    if (lbl) {
+                        lbl.classList.remove('correct-answer', 'incorrect-answer');
+                    }
+                });
+
+                // Exibe a justificativa
+                const rBox = document.getElementById(`rationale-${q.id}`);
+                if (rBox) rBox.style.display = 'block';
+
+                // Aplica cores de feedback técnico
+                if (respondidoIndex === q.correta) {
+                    acertos++;
+                    document.getElementById(`label-${q.id}-${q.correta}`).classList.add('correct-answer');
+                } else {
+                    if (respondidoIndex !== -1) {
+                        document.getElementById(`label-${q.id}-${respondidoIndex}`).classList.add('incorrect-answer');
+                    }
+                    document.getElementById(`label-${q.id}-${q.correta}`).classList.add('correct-answer');
+                }
+            });
+
+            // Atualiza placar
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            scoreDisplay.innerText = `Acertos: ${acertos}/50`;
+            scoreDisplay.style.display = 'block';
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            alert(`Simulado finalizado! Seu resultado foi de ${acertos} acertos em 50 questões. Verifique as justificativas azuis ao longo da página.`);
+        }
+
+        function reiniciarSimulado() {
+            if (confirm("Deseja realmente limpar as respostas e reiniciar o teste?")) {
+                document.getElementById('quizForm').reset();
+                document.getElementById('scoreDisplay').style.display = 'none';
+                questoes.forEach(q => {
+                    const rBox = document.getElementById(`rationale-${q.id}`);
+                    if (rBox) rBox.style.display = 'none';
+                    q.opcoes.forEach((_, oIndex) => {
+                        const lbl = document.getElementById(`label-${q.id}-${oIndex}`);
+                        if (lbl) lbl.classList.remove('correct-answer', 'incorrect-answer');
+                    });
+                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // Inicializar aplicação
+        window.onload = renderizarQuestoes;
+    </script>
+</body>
+</html>
